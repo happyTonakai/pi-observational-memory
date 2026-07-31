@@ -88,14 +88,14 @@ The dropper can only drop active observation ids. It cannot rewrite or merge obs
 
 ### Compaction hook
 
-The compaction hook runs during `session_before_compact`. In V3 it is deterministic and model-free:
+The compaction hook runs during `session_before_compact`. When V3 memory exists, it is deterministic and model-free:
 
 - it does not run observer, reflector, or dropper;
 - it does not call a model;
 - it does not wait for background memory workers;
 - it folds/projects ledger state and renders the summary.
 
-This is the main reason V3 compactions should feel instantaneous compared with V2.
+If the projection is empty, the hook returns no extension compaction and Pi uses its native summarizer. This preserves pre-cut context instead of persisting an empty summary. Prepared V3 compactions remain effectively instantaneous compared with V2.
 
 ## Ledger entries
 

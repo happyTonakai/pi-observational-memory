@@ -52,26 +52,13 @@ function setup(args: { entries: TestEntry[]; observationsPoolMaxTokens?: number;
 }
 
 describe("V3 compaction hook", () => {
-	it("returns valid empty om.folded details when there is no V3 memory", async () => {
+	it("delegates to native compaction when there is no V3 memory", async () => {
 		const entries = [textCustomMessage("raw-1", "aaaa")];
 		const { run, runtime, pi } = setup({ entries });
 
 		const result = await run("raw-1");
 
-		expect(result).toMatchObject({
-			compaction: {
-				firstKeptEntryId: "raw-1",
-				tokensBefore: 123,
-				summary: "",
-				details: {
-					type: "om.folded",
-					version: 1,
-					fullFold: false,
-					observations: [],
-					reflections: [],
-				},
-			},
-		});
+		expect(result).toBeUndefined();
 		expect(runtime.resolveModel).not.toHaveBeenCalled();
 		expect(pi.appendEntry).not.toHaveBeenCalled();
 		expect(runtime.compactHookInFlight).toBe(false);
@@ -146,7 +133,7 @@ describe("V3 compaction hook", () => {
 		expect(result.compaction.details.reflections.map((ref: any) => ref.id)).toEqual(["eeeeeeeeeeee", "ffffffffffff"]);
 	});
 
-	it("ignores old V2 memory entries and details", async () => {
+	it("delegates to native compaction when only old V2 memory exists", async () => {
 		const entries = [
 			textCustomMessage("raw-1", "aaaa"),
 			oldV2ObservationEntry("v2-obs"),
@@ -154,13 +141,9 @@ describe("V3 compaction hook", () => {
 		];
 		const { run } = setup({ entries });
 
-		const result = await run("cmp-v2") as any;
+		const result = await run("cmp-v2");
 
-		expect(result.compaction.details).toMatchObject({
-			type: "om.folded",
-			observations: [],
-			reflections: [],
-		});
+		expect(result).toBeUndefined();
 	});
 
 	it("does not wait for worker promises or call model resolution", async () => {
@@ -172,7 +155,7 @@ describe("V3 compaction hook", () => {
 			new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), 50)),
 		]);
 
-		expect(result).toMatchObject({ compaction: { details: { type: "om.folded" } } });
+		expect(result).toBeUndefined();
 		expect(runtime.resolveModel).not.toHaveBeenCalled();
 	});
 

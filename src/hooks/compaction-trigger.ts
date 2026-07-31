@@ -3,34 +3,16 @@ import { resolveCompactAfterTokens } from "../config.js";
 import { rawTokensSinceLastCompaction, type Entry } from "../session-ledger/index.js";
 import type { Runtime } from "../runtime.js";
 
-/**
- * Regex matching Pi's internal retryable error detection.
- * When the last assistant message in agent_end has stopReason "error" matching this pattern,
- * Pi will auto-retry — we must not trigger compaction between attempts.
- */
-const RETRYABLE_ERROR_RE =
-	/overloaded|provider.?returned.?error|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server.?error|internal.?error|network.?error|connection.?error|connection.?refused|connection.?lost|websocket.?closed|websocket.?error|other side closed|fetch failed|upstream.?connect|reset before headers|socket hang up|ended without|http2 request did not get a response|timed? out|timeout|terminated|retry delay/i;
-
 export function registerCompactionTrigger(pi: ExtensionAPI, runtime: Runtime): void {
-	pi.on("agent_end", (event: any, ctx: any) => {
+	// Pi emits agent_settled only after retries, automatic compaction, and queued
+	// continuation have finished, so retry policy stays owned by Pi.
+	pi.on("agent_settled", (_event, ctx) => {
 		runtime.ensureConfig(ctx.cwd);
 		if (runtime.config.passive === true) return;
 		if (runtime.compactInFlight) return;
 
-		// Don't trigger compaction if Pi will auto-retry — the agent hasn't truly finished.
-		// Pi emits agent_end before its own retry check, so we must detect this ourselves.
-		// The next agent_end (after retry succeeds or exhausts attempts) will re-evaluate.
-		const lastAssistant = [...event.messages].reverse().find(
-			(m): m is Extract<typeof m, { role: "assistant" }> => m.role === "assistant",
-		);
-		if (
-			lastAssistant
-			&& lastAssistant.stopReason === "error"
-			&& lastAssistant.errorMessage
-			&& RETRYABLE_ERROR_RE.test(lastAssistant.errorMessage)
-		) {
-			return;
-		}
+		// agent_settled fires only after Pi's retries, automatic compaction, and queued
+		// continuation have settled, so retry policy stays owned by Pi.
 
 		// Use the session's REAL context usage (provider-reported tokens) instead of a
 		// client-side token estimate. The old raw-token estimate systematically

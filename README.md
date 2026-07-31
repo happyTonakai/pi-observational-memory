@@ -173,6 +173,8 @@ This extension is especially useful when the session contains decisions that sho
 
 ## Install
 
+Requires Pi 0.81.0 or newer. Proactive compaction uses the `agent_settled` lifecycle event introduced in that release.
+
 ```bash
 pi install npm:pi-observational-memory
 ```
@@ -325,14 +327,14 @@ flowchart TD
     Turn[turn_end]
     Observe[Capture observations]
     Reflect[Distill reflections]
-    AgentEnd[agent_end]
+    AgentSettled[agent_settled]
     Trigger[auto-compaction trigger]
     Compact[session_before_compact]
     Summary[visible memory for Pi]
 
     Turn -->|observation due| Observe
     Turn -->|reflection due| Reflect
-    AgentEnd -->|compactAfterTokens and idle| Trigger --> Compact --> Summary
+    AgentSettled -->|compactAfterTokens and idle| Trigger --> Compact --> Summary
 ```
 
 The high-level lifecycle:
@@ -353,7 +355,7 @@ Current behavior:
 
 * **Observation-centered memory.** The extension records useful session observations while you work.
 * **Durable reflections.** The extension distills stable facts that help the agent stay oriented over time.
-* **Fast compaction.** `session_before_compact` does not call a model or wait for background workers. It renders the current prepared memory state.
+* **Fast compaction.** When prepared V3 memory exists, `session_before_compact` renders it without calling a model or waiting for background workers. An empty V3 projection delegates to Pi's native summarizer instead of replacing prior context with an empty summary.
 * **Background memory work.** Observation and reflection work run from `turn_end` when their token clocks are due; dropper work runs only after successful reflection and prunes the folded active observation ledger toward `observationsPoolTargetTokens`.
 * **Source-backed recall.** Observations and reflections can be traced back through the `recall` tool.
 * **Visible/full views.** `/om:view` shows visible memory and `/om:view full` shows the full current memory state. Use `/om:status` for visible-vs-full drift and for the separate visible observation pool vs active observation pool.

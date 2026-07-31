@@ -1,4 +1,8 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionContext,
+	SessionBeforeCompactEvent,
+} from "@earendil-works/pi-coding-agent";
 
 import type { Runtime } from "../runtime.js";
 import { buildCompactionProjection, renderSummary, type Entry } from "../session-ledger/index.js";
@@ -13,7 +17,7 @@ function observationsPoolMaxTokens(runtime: Runtime): number {
 }
 
 export function registerCompactionHook(pi: ExtensionAPI, runtime: Runtime): void {
-	pi.on("session_before_compact", async (event: any, ctx: any) => {
+	pi.on("session_before_compact", async (event: SessionBeforeCompactEvent, ctx: ExtensionContext) => {
 		if (runtime.compactHookInFlight) {
 			if (ctx.hasUI) {
 				ctx.ui.notify(
@@ -35,6 +39,10 @@ export function registerCompactionHook(pi: ExtensionAPI, runtime: Runtime): void
 				{ observationsPoolMaxTokens: observationsPoolMaxTokens(runtime) },
 			);
 			const summary = renderSummary(projection.reflections, projection.observations);
+			if (summary.length === 0) {
+				// Decline ownership so Pi's native summarizer preserves the pre-cut context.
+				return;
+			}
 
 			return {
 				compaction: {
