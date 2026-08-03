@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { normalizeSourceEntryIds, OBSERVATION_TIMESTAMP_PATTERN, runObserver } from "../src/agents/observer/agent.js";
-import { estimateStringTokens } from "../src/tokens.js";
+import { observationLineTokenCount } from "../src/tokens.js";
 
 function fakeAgentLoop(handler: (prompts: any[], context: any, config: any) => Promise<void> | void): any {
 	return ((prompts: any[], context: any, config: any) => ({
@@ -71,7 +71,7 @@ describe("runObserver", () => {
 			timestamp: "2026-05-02 10:30",
 			relevance: "high",
 			sourceEntryIds: ["entry-a"],
-			tokenCount: estimateStringTokens(content),
+			tokenCount: observationLineTokenCount({ id: observations?.[0]?.id ?? "x", timestamp: "2026-05-02 10:30", relevance: "high", content }),
 		});
 		expect(observations?.[0].id).toMatch(/^[a-f0-9]{12}$/);
 	});
